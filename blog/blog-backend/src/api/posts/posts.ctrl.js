@@ -14,6 +14,28 @@ export const checkObjectId = ( ctx, next ) => {
     return next(); 
 }
 
+// 포스트 수정 및 삭제 시 권한 확인 
+export const getPostById = async ( ctx, next ) => {
+    const { id } = ctx.params; 
+    if ( !ObjectId.isValid(id)) {
+        ctx.status = 400; //Bad Request 
+        return; 
+    }
+    try {
+        const post = await Post.findById(id); 
+        // 포스트가 존재하지 않을 떄 
+        if (!post) {
+            ctx.status = 404 // Not Found 
+            return; 
+        }
+        ctx.state.post = post; 
+        return next(); 
+    } catch(e) {
+        ctx.throw(500, e);
+    }
+}
+
+
 let postId = 1; //id의 초깃값
 
 //posts 배열 초기 데이터 
@@ -50,7 +72,12 @@ export const write = async ctx => {
 
     //REST API의 Request Body는 ctx.request.body에서 조회할 수 있다. 
     const { title, body, tags } = ctx.request.body; 
-    const post = new Post({ title, body, tags });
+    const post = new Post({ 
+        title, 
+        body, 
+        tags, 
+        user:ctx.state.user 
+    });
     try {
         await post.save(); 
         ctx.body = post; 
@@ -69,13 +96,20 @@ export const list = async ctx => {
         return 
     }
 
+    const { tag, username } = ctx.query; 
+    //tag, username 값이 유효하면 객체 안에 넣고, 그렇지 않으면 넣지 않음 
+    const query = {
+        ...(username ? { 'user.username': username} : {}),
+        ...(tag ? { tags: tag} : {})
+    }
+
     try {
-        const posts = await Post.find()
+        const posts = await Post.find(query)
             .sort({ _id: -1 })
             .limit(10)
             .skip((page - 1) * 10)
             .exec(); 
-        const postCount = await Post.countDocuments().exec(); 
+        const postCount = await Post.countDocuments(query).exec(); 
         ctx.set('Last-Page', Math.ceil(postCount / 10))
         ctx.body = posts 
             .map(post => post.toJSON())
@@ -93,18 +127,19 @@ export const list = async ctx => {
 GET /api/posts/:id
 */
 export const read = async ctx => {
-    const { id } = ctx.params;
-    try {
-        const post = await Post.findById(id).exec(); 
-        // 포스트가 없으면 올류를 반환한다. 
-        if (!post) {
-            ctx.status = 404; 
-            return; 
-        }
-        ctx.body = post 
-    } catch(e) {
-        ctx.throw(500, e)
-    }
+    ctx.body = ctx.state.post;
+    // const { id } = ctx.params;
+    // try {
+    //     const post = await Post.findById(id).exec(); 
+    //     // 포스트가 없으면 올류를 반환한다. 
+    //     if (!post) {
+    //         ctx.status = 404; 
+    //         return; 
+    //     }
+    //     ctx.body = post 
+    // } catch(e) {
+    //     ctx.throw(500, e)
+    // }
 }
 
 
@@ -188,3 +223,13 @@ export const update = async ctx => {
     }
 }
 
+
+
+export const checkOwnPost = (ctx, next) => {
+    const { user, post } = ctx.state; 
+    if (post.user._id.toString() !== user._id) {
+        ctx.status = 403; 
+        return; 
+    }
+    return next();
+}
