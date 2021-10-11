@@ -52,7 +52,6 @@ const RegisterForm = ({ history }) => {
 
   // 회원가입 성공 / 실패 처리
   useEffect(() => {
-    console.log('HER', authError);
     if (authError) {
       // 계정명이 이미 존재할 때
       console.log(authError);
