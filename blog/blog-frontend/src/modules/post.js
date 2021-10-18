@@ -20,13 +20,15 @@ export function* postSaga() {
 const initialState = {
   post: null,
   error: null,
+  lastPage: 1,
 };
 
 const post = handleActions(
   {
-    [READ_POST_SUCCESS]: (state, { payload: post }) => ({
+    [READ_POST_SUCCESS]: (state, { payload: post, meta: response }) => ({
       ...state,
       post,
+      lastPage: parseInt(response.headers['last-page'], 10), // 문자열을 숫자로 전환
     }),
     [READ_POST_FAILURE]: (state, { payload: error }) => ({
       ...state,

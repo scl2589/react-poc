@@ -20,6 +20,7 @@ const WritePostButtonWrapper = styled.div`
 const PostItemBlock = styled.div`
   padding-top: 3rem;
   padding-bottom: 3rem;
+  word-break: break-all;
   /* 맨위 포스트는 padding-top이 없음 */
 
   &:first-child {
